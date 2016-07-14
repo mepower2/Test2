@@ -1,0 +1,443 @@
+<html>
+<head>
+    <link type="text/css" rel="stylesheet" href="style.css"/>  
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDoxYhiYdIwFxcwbb4FfnAI4c2AtjTUNyU&libraries=drawing,geometry,places"
+    ></script>
+    
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script type="text/javascript" src="college3.js"></script>
+     
+       <script type="text/javascript" src="mapStyle.js"></script>
+   
+    <script>
+         var script = '<script src="infoBubble.js"';
+      if (document.location.search.indexOf('compiled') !== -1) {
+        script += '-compiled';
+      }
+      script += '.js"><' + '/script>';
+      document.write(script); 
+        var map;
+        var infoBubble;
+        var markers=[];
+        var id;
+        var states=[];
+        var cities=[];
+        var markerPlaces=[];
+        var polygon= null;
+        var i;
+        var loc;
+        function initialize() {
+            var bounds = new google.maps.LatLngBounds();
+            var largeInfoWindow= new google.maps.InfoWindow();
+            var drawingManager= new google.maps.drawing.DrawingManager({
+                drawingMode: google.maps.drawing.OverlayType.POLYGON,
+                drawingControl: true,
+                drawingControlOptions:{
+                    position: google.maps.ControlPosition.TOP_LEFT,
+                        drawingModes:[
+                            google.maps.drawing.OverlayType.POLYGON
+                        ]
+                }
+            })
+            var bounds= new google.maps.LatLngBounds();
+            var mapProp = {
+                center:new google.maps.LatLng(41.0963,-87.2359),
+                zoom:4,
+                mapTypeId:google.maps.MapTypeId.ROADMAP,
+                mapTypeControl: false,
+                styles: style,
+                scrollwheel: false
+            };
+            //map.data.loadGeoJson('Univ.json');
+    
+            map=new google.maps.Map(document.getElementById("googleMap"),mapProp);
+            
+            for(var i = 0; i < college3.length; i++){
+                var latlng = new google.maps.LatLng(college3[i]["LATITUDE"], college3[i]["LONGITUD"]);
+                var title1= college3[i].INSTNM
+                var webad=  college3[i].WEBADDR
+                var state= college3[i].STABBR
+                var city= college3[i].CITY
+                
+                
+                
+                var string= '<IMG BORDER="0" IMG WIDTH= "200px" ALIGN="Left" SRC="Images/combine.jpg">' + '<div id="content">' + '<b>'+ title1 + '</b><hr><br>' + '<a href='+ webad + '>' + webad + '</a></div>'   
+                 
+            if(state==="IL"){
+                var marker = new google.maps.Marker({
+                    position: latlng,
+                    map: map,
+                    id:i,
+                    title: string,
+                    category: state,
+                    icon: "Images/field2.png"
+                });
+            }
+                else{var marker = new google.maps.Marker({
+                    position: latlng,
+                    map: map,
+                    id:i,
+                    title: string,
+                    category: state,
+                    icon: "Images/field.png"})
+                }
+                markers.push(marker);
+                states.push(state);
+                
+                (function (marker, markers) {
+                    google.maps.event.addListener(marker, "click", function (e) {
+                        largeInfoWindow.setContent('<div>' + marker.title  + '</div>')
+                        largeInfoWindow.open(map, marker);
+                    })
+                }) (marker, markers)
+            
+                
+                marker.addListener("click",function(){
+                     place(this);
+                     loc = this.position
+                     id= this.id
+                 })
+              
+                 
+            }
+            
+            
+            
+           document.getElementById('show-listings').addEventListener('click',showListings);
+            document.getElementById('hide-listings').addEventListener('click', hideListings);
+           
+            document.getElementById("toggle-drawing").addEventListener('click',function(){toggleDrawing(drawingManager)});
+            
+            drawingManager.addListener('overlaycomplete',function(event){
+                if(polygon) {
+                    polygon.setMap(null);
+                    hideListings();
+                }
+                drawingManager.setDrawingMode(null);
+                polygon = event.overlay;
+                polygon.setEditable(true);
+                searchWithinPolygon();
+                
+                polygon.getPath().addListener('set_at',searchWithinPolygon);
+                polygon.getPath().addListener('insert_at',searchWithinPolygon);
+                
+          var area=google.maps.geometry.spherical.computeArea(polygon.getPath());window.alert(area+ "Square Meters") });
+            
+            
+                
+                
+            
+            function showListings(){
+             
+                for (var i=0; i < markers.length; i++){
+                    markers[i].setVisible(true);
+                    markers[i].setMap(map);
+                    
+                }
+           
+            }
+            function hideListings(){
+                for (var i=0; i<markers.length;i++) {
+                    markers[i].setMap(null);
+                }
+            }
+            
+            ;
+            
+         function toggleDrawing(drawingManager){
+             if (drawingManager.map){
+                 drawingManager.setMap(null);
+                 if (polygon){
+                     polygon.setMap(null);
+                 }
+             } else{
+                 drawingManager.setMap(map);
+             }
+         }  
+           
+            
+            
+            
+            function searchWithinPolygon() {
+                
+                for (var i=0; i <markers.length; i++){
+                    if (google.maps.geometry.poly.containsLocation(markers[i].position,polygon)){
+                        markers[i].setMap(map);
+                        markers[i].setVisible(true);
+                        fitBoundsToVisibleMarkers();
+                    } else{
+                        markers[i].setMap(null);
+                        markers[i].setVisible(false);
+                        
+                    };
+                }fitBoundsToVisibleMarkers()  ///??? How to re-bound visible markers http://stackoverflow.com/questions/15299113/google-maps-v3-fitbounds-on-visible-markers
+                }
+           function fitBoundsToVisibleMarkers() {
+
+                var bounds = new google.maps.LatLngBounds();
+
+            for (var i=0; i<markers.length; i++) {
+                if(markers[i].getVisible()) {
+                    bounds.extend( markers[i].getPosition() );
+                }
+            }
+
+            map.fitBounds(bounds);
+           }
+               
+               
+               
+               function zoomToArea(){
+               var geocoder = new google.maps.Geocoder();
+                    var address= document.getElementById('search-within-time-text').value;
+                    if (address ==''){
+                        window.alert("You must enter an area, or address.");}
+                    else{
+                        geocoder.geocode(
+                        { address: address,
+                        }
+                        , function(results, status){
+                            var image = {
+                                url: 'https://developers.google.com/maps/documentation/javascript/examples/full/images/beachflag.png',
+                                // This marker is 20 pixels wide by 32 pixels high.
+                                size: new google.maps.Size(20, 32),
+                                // The origin for this image is (0, 0).
+                                origin: new google.maps.Point(0, 0),
+                                // The anchor for this image is the base of the flagpole at (0, 32).
+                                anchor: new google.maps.Point(0, 32)
+                                };
+                            if (status == google.maps.GeocoderStatus.OK){
+                                map.setCenter(results[0].geometry.location);
+                                map.setZoom(15);
+                                var latlng= results[0].geometry.location;
+                                var marker = new google.maps.Marker({
+                                    position:latlng,
+                                    map: map,
+                                    title: address,
+                                    icon:image
+                                });
+                                var radius= document.getElementById('radius').value;
+                                radius_circle = new google.maps.Circle({
+  						center: latlng,
+  						radius:  1609.34 * radius,
+  						clickable: false,
+						map: map
+                                });
+                                map.fitBounds(radius_circle.getBounds());
+                               marker.addListener("click",function(){
+                                    populateInfoWindow(this,largeInfoWindow);
+              
+                                    });
+                            } else{
+                                window.alert("Couldn't find Location")
+                            }
+                                
+                        })
+                    }
+               
+               }
+            document.getElementById('search-within-time').addEventListener('click',zoomToArea);
+            var timeAutocomplete= new google.maps.places.Autocomplete(
+                document.getElementById('search-within-time-text'))
+            
+            
+        function filterStates(category){
+                var i;
+                var categoryChoice= document.getElementById('state').value
+                var choosenCity = document.getElementById('city').value;
+            
+            for(i=0; i < college3.length; i++){
+               
+                if (markers[i].category === categoryChoice /*&& choosenCity === college3[i].CITY*/ ) {
+                    markers[i].setVisible(true);
+                }
+        
+        // Categories don't match 
+                else {
+                    markers[i].setVisible(false);
+                }
+            }
+            fitBoundsToVisibleMarkers();
+        }
+
+                
+            document.getElementById('filter').addEventListener('click',filterStates);
+            
+           function filterCities(){
+                var i;
+                var choosenCity = document.getElementById('city').value;
+                for(var i = 0; i < college3.length; i++){
+                    if (choosenCity === college3[i].CITY){
+                        markers[i].setVisible(true);
+                    }else {
+                        markers[i].setVisible(false); // remove to display multiple categories 
+                    }
+                 
+                }
+                fitBoundsToVisibleMarkers();
+            
+            } 
+            document.getElementById('filter2').addEventListener('click',filterCities);
+            
+            function search(){
+            hideSearchListings();
+            infowindow = new google.maps.InfoWindow();
+            var service = new google.maps.places.PlacesService(map);
+            var type = document.getElementById('store-type').value
+            service.nearbySearch({
+                location: loc,
+                radius: 1000,
+                type: type
+        }, callback);
+            
+
+      function callback(results, status) {
+        if (status === google.maps.places.PlacesServiceStatus.OK) {
+          for (var i = 0; i < results.length; i++) {
+            createMarker(results[i]);
+              markerPlaces.push(marker)
+          }
+        }
+      }
+
+      function createMarker(place) {
+        var placeLoc = place.geometry.location;
+          var icon = {
+                url: place.icon,
+                size: new google.maps.Size(35, 35),
+                origin: new google.maps.Point(0, 0),
+                anchor: new google.maps.Point(15, 34),
+                scaledSize: new google.maps.Size(25, 25)
+            };
+            var marker= new google.maps.Marker({
+                map: map,
+                icon: icon,
+                title:place.name,
+                position: place.geometry.location,
+                id: place.id
+            });
+        
+        markerPlaces.push(marker)
+        google.maps.event.addListener(marker, 'click', function() {
+          infowindow.setContent(place.name);
+          infowindow.open(map, this);
+        });
+      }
+            }
+            
+            document.getElementById('show-places').addEventListener('click', search)
+            
+            function place(marker)
+              {
+                    var place2= marker.id
+                     var place1= marker.title;
+                    var place3 = college3[place2].INSTNM;
+                  
+                     document.getElementById("stateName").innerHTML = place3
+                     
+                     
+                 }
+              function hideSearchListings(){
+                for (var i=0; i<markerPlaces.length;i++) {
+                    markerPlaces[i].setMap(null);
+                    markerPlaces[i].setVisible(false);
+                }
+            }
+            
+}
+            
+    //initialize
+           
+    
+
+        
+    
+        google.maps.event.addDomListener(window, 'load', initialize);
+        
+    
+    </script>
+</head>
+    <body>
+       
+        
+        <div class="container">
+        <div class="options-box">
+             <h1 id="me"> Find The Right College </h1>
+            <hr>
+        <div>
+        <input id="show-listings" type="button" value="Show Listings">
+        <input id="hide-listings" type="button" value="Hide Listings">
+        <input id= "toggle-drawing" type="button" value="Drawing Tools"> 
+             
+            
+               </div>
+            <hr>
+        <div>
+        <span class="text"> Within </span>
+        <select id= "max-duration">
+            <option value="10">10 min</option>
+            <option value="15">15 min</option>
+            <option value="30">30 min</option>
+            <option value="60">1 hour</option>
+            
+        </select>
+        <select id="mode">
+            <option value="DRIVING">drive</option>
+            <option value="WALKING">walk</option>
+            <option value="BICYCLING">bike</option>
+            <option value="TRANSIT">transit ride</option>
+            
+        </select>
+            <span class="text"> of</span>
+            <input id= "search-within-time-text" type="text" placeholder="1213 Grove Street, IL">
+          
+        <select id= "radius">
+            <option value="10">10 Miles</option>
+            <option value="50">50 Miles</option>
+            <option value="100">100 Miles</option>
+            <option value="150">150 Miles</option>
+            <input id= "search-within-time"     type="button" value="Go">
+            
+            </select>
+            </div>  
+            <hr>
+            <select id= "state">
+            <option value="IL">IL</option>
+            <option value="AL">AL</option>
+            <option value="AZ">AZ</option>
+            <option value="AR">AR</option>
+            </select>
+           <input id= "filter"     type="button" value="Go">
+
+            <select id= "city">
+            <option value="Chicago">Chicago</option>
+            <option value="Los Angeles">Los Angeles</option>
+            <option value="Dallas">Dallas</option>
+            <option value="Seattle">Seattle</option>
+            </select>
+            <input id= "filter2"     type="button" value="Go">
+            
+            <hr>
+           <select id="store-type">
+            <option value="bank">Banks</option>
+            <option value="bar">Bars</option>
+            <option value="casino">Casinos</option>
+            <option value="church">Churchs</option>
+            <option value="fire_station">Fire Stations</option>
+            <option value="gas_station">Gas Stations</option>
+            <option value="laundry">Laundry Mats</option>
+            <option value="school">Schools</option>
+            </select>
+            <span class="whitHouse"> <b>Around<div id="stateName"></div> </b></span>
+            
+            
+             <input id="show-places" type="button" value="Show Places">
+          
+
+        </div>
+    </div>  
+       
+        <div id="googleMap" ></div>
+    </body>
+
+</html>
